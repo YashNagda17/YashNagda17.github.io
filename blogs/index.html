@@ -1,0 +1,32 @@
+---
+layout: default
+title: Blogs
+---
+
+<section class="page-header">
+  <p class="eyebrow">Writing</p>
+  <h1>Blogs</h1>
+  <p class="intro">
+    Posts will appear here automatically when you add markdown files to <code>_posts</code>.
+  </p>
+</section>
+
+<section class="post-list">
+  {% assign posts = site.posts | sort: "date" | reverse %}
+  {% if posts.size > 0 %}
+    {% for post in posts %}
+      <article class="post-card">
+        <p class="post-date">{{ post.date | date: "%d %b %Y" }}</p>
+        <h2><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h2>
+        {% if post.excerpt %}
+          <p>{{ post.excerpt | strip_html | truncate: 180 }}</p>
+        {% endif %}
+      </article>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <p>No posts yet.</p>
+      <p>Create a file like <code>_posts/2026-05-21-my-first-post.md</code> to publish a new blog post.</p>
+    </div>
+  {% endif %}
+</section>
