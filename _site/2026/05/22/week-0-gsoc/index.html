@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Personal website of Yash Nagda">
+    <title>Week 0: GSoC Project Kickoff</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/main.css">
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="/">Yash Nagda</a>
+        <div class="topbar-links">
+          <nav class="primary-nav">
+          <a href="/">Home</a>
+          <a href="/blogs/">Blogs</a>
+          </nav>
+          <nav class="social-nav" aria-label="Social links">
+            <a href="mailto:yashnagda17@gmail.com">Email</a>
+            <a href="https://www.linkedin.com/in/yashnagda17/" target="_blank" rel="noreferrer">LinkedIn</a>
+            <a href="https://github.com/YashNagda17" target="_blank" rel="noreferrer">GitHub</a>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <article class="post">
+  <p class="eyebrow">Blog post</p>
+  <h1>Week 0: GSoC Project Kickoff</h1>
+  <p class="post-date">22 May 2026</p>
+  <div class="prose">
+    <p>This week, I am starting the GSoC project for integrating MLIR backend with Lfortran. The main goal is to understand the existing lowering flow, note the most important gaps, and prepare a clean foundation for later MLIR implementation. The project has two paths: a native API built with our own implementation for MLIR lowering, and an upstream API built on upstream MLIR. This early work involves creating a stable API Design for future changes in the MLIR backend, and ensuring that the design can work with both native and upstream implementations.</p>
+
+<p>The project is important because a reliable MLIR backend can make LFortran easier to extend with upstream MLIR changes. The stablitity of LFortran MLIR backend with upstream changes, with minimum changes in the codebase is crucial. Also, it gives a performance comparision with existing LFortran backends, and helps to identify the most important gaps in the current implementation. The project also involves a lot of design work, which is important for ensuring that the MLIR backend can be easily extended in the future.</p>
+
+<p>A huge thanks to my mentors, Ondřej Certík, Pranav Goswami, Harshita Kalani &amp; other contributors for providing me an opportunity to work on this project. I am looking forward to learning a lot from this project and contributing to the LFortran community.</p>
+
+<p>Detailed reference:</p>
+<ul>
+  <li><a href="https://summerofcode.withgoogle.com/programs/2026/projects/Z2Eq4Htp">GSOC Project Proposal</a></li>
+  <li><a href="https://drive.google.com/file/d/1rvBM4caro9aHoDZK2qhbKyNDsHYZWDYy/view?usp=sharing">Detailed GSOC Application</a></li>
+  <li><a href="https://github.com/certik/mlir">Reference MLIR Implementation</a></li>
+</ul>
+
+  </div>
+</article>
+
+
+      </main>
+    </div>
+  </body>
+</html>
