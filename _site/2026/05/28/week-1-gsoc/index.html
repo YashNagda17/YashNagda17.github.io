@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Personal website of Yash Nagda">
+    <title>Week 1: GSoC Project Progress</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/main.css">
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="/">Yash Nagda</a>
+        <div class="topbar-links">
+          <nav class="primary-nav">
+          <a href="/">Home</a>
+          <a href="/blogs/">Blogs</a>
+          </nav>
+          <nav class="social-nav" aria-label="Social links">
+            <a href="mailto:yashnagda17@gmail.com">Email</a>
+            <a href="https://www.linkedin.com/in/yashnagda17/" target="_blank" rel="noreferrer">LinkedIn</a>
+            <a href="https://github.com/YashNagda17" target="_blank" rel="noreferrer">GitHub</a>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <article class="post">
+  <p class="eyebrow">Blog post</p>
+  <h1>Week 1: GSoC Project Progress</h1>
+  <p class="post-date">28 May 2026</p>
+  <div class="prose">
+    <p><strong>Hours this week:</strong> 16</p>
+
+<p>This week, I spent most of my time understanding the <a href="https://github.com/certik/mlir"><code class="language-plaintext highlighter-rouge">mlir</code> C APIs and various MLIR dialects</a> and other related libraries. Specifically, I focused on the reasons why different compilers choose different MLIR dialects.</p>
+
+<h2 id="progress-and-understanding">Progress and Understanding</h2>
+
+<p>Focusing on <a href="https://llvm.github.io/clangir/">Clang IR (ClangIR / CIR)</a>, I found that it is a good starting point to understand the various MLIR dialects. Clang IR is a high-level MLIR dialect that sits between Clang’s AST and LLVM IR. The primary reason for its creation was that existing dialects were not able to handle the complexity of the C language.</p>
+
+<p>Similarly, <a href="https://flang.llvm.org/docs/">Flang</a> has two different dialects, <a href="https://flang.llvm.org/docs/HighLevelFIR.html">HLFIR</a> and <a href="https://flang.llvm.org/docs/FIRLang.html">FIR</a>. HLFIR keeps high-level Fortran semantics (array assignments, expressions), while FIR is closer to codegen and lowers toward LLVM IR. While lowering any language, any compiler has to make a lot of decisions, and having these intermediate dialects can help us to break down the decisions into smaller steps, each decision handled at a particular stage. For example consider lowering any vector addition, ie <code class="language-plaintext highlighter-rouge">arr = arr + 1</code>. Here, there can be various forms of decisions, like using a temporary to store the result, using vector operation or breaking it into a for loop. So, an intermediate dialect can help us to break down all of these decisions into sub-steps, each decision handled at a particular stage, and defining boundaries of where to make a decision.</p>
+
+<p>So, having multiple dialects can be helpful. For LFortran, alot of these decisions are already made in the ASR passes. However, for TinyC compiler, we start with an AST, and make all decisions in the MLIR backend. So, having multiple dialects can be helpful to break down the decisions into smaller steps, each decision handled at a particular stage, and defining boundaries of where to make a decision, in the TinyC compiler. Considering these cases, I have narrowed down two primary approaches to start implementing the MLIR backend.</p>
+
+<div class="mermaid-row">
+  <div class="mermaid-panel">
+    <h2>Approach 1: Direct lowering to LLVM  IR</h2>
+    <div class="mermaid">
+flowchart TB
+  A0["Initial ASR"] --&gt; A1["Run all Passes"]
+  A1 --&gt; A2["Final ASR"]
+  A2 --&gt; L1["LLVM-dialect MLIR"]
+  L1 --&gt; IR1["LLVM IR"]
+</div>
+  </div>
+  <div class="mermaid-panel">
+    <h2>Approach 2: Lowering through multiple dialects</h2>
+    <div class="mermaid">
+flowchart TB
+  B0["Initial ASR"] --&gt; H["High-level MLIR Dialects"]
+  H --&gt; L2["LLVM-dialect MLIR"]
+  L2 --&gt; IR2["LLVM IR"]
+</div>
+  </div>
+</div>
+
+<p>Based on these approaches, I have made an initial implementation of the MLIR API in LFortran codebase on the following branches:</p>
+
+<ul>
+  <li><strong>mlir1</strong> — Direct lowering to LLVM  IR: <a href="https://github.com/YashNagda17/lfortran/tree/mlir1">https://github.com/YashNagda17/lfortran/tree/mlir1</a></li>
+  <li><strong>mlir2</strong> — Lowering through multiple dialects: <a href="https://github.com/YashNagda17/lfortran/tree/mlir2">https://github.com/YashNagda17/lfortran/tree/mlir2</a></li>
+</ul>
+
+<p>Both paths reuse LFortran’s existing LLVM IR → object code flow after MLIR translation.</p>
+
+<p>I also implemented debug flags (<code class="language-plaintext highlighter-rouge">--show-mlir</code>, <code class="language-plaintext highlighter-rouge">--show-mlir-llvm-dialect</code>, <code class="language-plaintext highlighter-rouge">--show-llvm-from-mlir</code>) and an environment switch (<code class="language-plaintext highlighter-rouge">USE_MLIR_Upstream=1</code>) to compare native C lowering vs upstream MLIR passes. I have used only the necessary codefiles from the <a href="https://github.com/certik/mlir">https://github.com/certik/mlir</a> repository, in these implementations, to keep the codefiles smaller.</p>
+
+<h2 id="next-steps">Next Steps</h2>
+
+<p>Next, I am starting to work on two different tasks for the MLIR backend.</p>
+<ul>
+  <li>First, to figure out the ASR dialect for the LFortran compiler.</li>
+  <li>Second, to figure the alternative for MachO backend, for x86_64 architecture.</li>
+</ul>
+
+<p>Over the next few days, I will be working on these tasks, and will be updating the progress here. Also, I shall be working to add support for more operations in the new MLIR backend, as per the project’s needs.</p>
+
+  </div>
+</article>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script src="/assets/js/mermaid-init.js"></script>
+
+
+      </main>
+    </div>
+  </body>
+</html>

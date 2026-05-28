@@ -125,6 +125,50 @@ h2 {
   max-width: 60ch;
 }
 
+.prose h3 {
+  margin: 2rem 0 0.75rem;
+  color: var(--text);
+  font-family: "Cormorant Garamond", serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.prose:has(.mermaid-row) {
+  max-width: 100%;
+}
+
+.mermaid-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin: 1.5rem 0;
+}
+
+.mermaid-panel h2,
+.mermaid-panel h3 {
+  margin: 0 0 2rem;
+  font-size: 1.25rem;
+}
+
+.mermaid-panel .mermaid {
+  max-width: none;
+  margin: 0;
+  padding-top: 0.5rem;
+}
+
+.mermaid {
+  width: 100%;
+  max-width: 60ch;
+  margin: 0.75rem 0 1.5rem;
+  overflow-x: auto;
+}
+
+.mermaid svg {
+  display: block;
+  height: auto;
+  max-width: 100%;
+}
+
 .intro {
   margin: 22px 0 0;
 }
@@ -189,6 +233,10 @@ code {
 @media (max-width: 640px) {
   .shell {
     padding-inline: 18px;
+  }
+
+  .mermaid-row {
+    grid-template-columns: 1fr;
   }
 
   .topbar {
