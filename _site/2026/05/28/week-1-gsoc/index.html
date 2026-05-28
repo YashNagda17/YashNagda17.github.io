@@ -41,7 +41,7 @@
 
 <p>Focusing on <a href="https://llvm.github.io/clangir/">Clang IR (ClangIR / CIR)</a>, I found that it is a good starting point to understand the various MLIR dialects. Clang IR is a high-level MLIR dialect that sits between Clang’s AST and LLVM IR. The primary reason for its creation was that existing dialects were not able to handle the complexity of the C language.</p>
 
-<p>Similarly, <a href="https://flang.llvm.org/docs/">Flang</a> has two different dialects, <a href="https://flang.llvm.org/docs/HighLevelFIR.html">HLFIR</a> and <a href="https://flang.llvm.org/docs/FIRLang.html">FIR</a>. HLFIR keeps high-level Fortran semantics (array assignments, expressions), while FIR is closer to codegen and lowers toward LLVM IR. While lowering any language, any compiler has to make a lot of decisions, and having these intermediate dialects can help us to break down the decisions into smaller steps, each decision handled at a particular stage. For example consider lowering any vector addition, ie <code class="language-plaintext highlighter-rouge">arr = arr + 1</code>. Here, there can be various forms of decisions, like using a temporary to store the result, using vector operation or breaking it into a for loop. So, an intermediate dialect can help us to break down all of these decisions into sub-steps, each decision handled at a particular stage, and defining boundaries of where to make a decision.</p>
+<p>Similarly, <a href="https://flang.llvm.org/docs/">Flang</a> has two different dialects, <a href="https://flang.llvm.org/docs/HighLevelFIR.html">HLFIR</a> and <a href="https://flang.llvm.org/docs/FIRLangRef.html">FIR</a>. HLFIR keeps high-level Fortran semantics (array assignments, expressions), while FIR is closer to codegen and lowers toward LLVM IR. While lowering any language, any compiler has to make a lot of decisions, and having these intermediate dialects can help us to break down the decisions into smaller steps, each decision handled at a particular stage. For example consider lowering any vector addition, ie <code class="language-plaintext highlighter-rouge">arr = arr + 1</code>. Here, there can be various forms of decisions, like using a temporary to store the result, using vector operation or breaking it into a for loop. So, an intermediate dialect can help us to break down all of these decisions into sub-steps, each decision handled at a particular stage, and defining boundaries of where to make a decision.</p>
 
 <p>So, having multiple dialects can be helpful. For LFortran, alot of these decisions are already made in the ASR passes. However, for TinyC compiler, we start with an AST, and make all decisions in the MLIR backend. So, having multiple dialects can be helpful to break down the decisions into smaller steps, each decision handled at a particular stage, and defining boundaries of where to make a decision, in the TinyC compiler. Considering these cases, I have narrowed down two primary approaches to start implementing the MLIR backend.</p>
 
@@ -87,6 +87,11 @@ flowchart TB
 </ul>
 
 <p>Over the next few days, I will be working on these tasks, and will be updating the progress here. Also, I shall be working to add support for more operations in the new MLIR backend, as per the project’s needs.</p>
+
+<h2 id="acknowledgments">Acknowledgments</h2>
+
+<p>A huge thanks to my mentors, <a href="https://github.com/certik">Ondřej Čertík</a>, <a href="https://github.com/Pranavchiku">Pranav Goswami</a>, <a href="https://github.com/HarshitaKalani">Harshita Kalani</a> &amp; other contributors for helping me to work on this project.</p>
+
 
   </div>
 </article>
