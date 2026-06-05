@@ -123,6 +123,16 @@ h2 {
 .prose {
   color: var(--muted);
   font-size: 1.05rem;
+  max-width: 100%;
+}
+
+.prose > p,
+.prose > ul,
+.prose > ol,
+.prose > h2,
+.prose > h3,
+.prose > blockquote,
+.prose > li {
   max-width: 60ch;
 }
 
@@ -233,9 +243,69 @@ h2 {
   margin-top: 24px;
 }
 
+.prose a {
+  color: #1a5fb4;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+.prose a:hover {
+  color: #0d3d7a;
+}
+
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.95em;
+}
+
+.prose .playcard,
+.prose pre.playcard,
+.prose .highlighter-rouge.playcard {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 1.25rem 0 1.5rem;
+  padding: 1rem 1.15rem;
+  background: #0a0a0a;
+  color: #f2f2f2;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.22);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.prose .highlighter-rouge.playcard {
+  padding: 0;
+}
+
+.prose .highlighter-rouge.playcard .highlight,
+.prose .highlighter-rouge.playcard .highlight pre {
+  margin: 0;
+  padding: 1rem 1.15rem;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow-x: visible;
+}
+
+.prose .playcard code,
+.prose pre.playcard code {
+  display: block;
+  color: #f2f2f2;
+  background: transparent;
+  white-space: pre;
+  word-wrap: normal;
+  overflow-wrap: normal;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.prose .playcard .highlight code,
+.prose .playcard .highlight code span {
+  color: #f2f2f2;
 }
 
 @media (max-width: 640px) {

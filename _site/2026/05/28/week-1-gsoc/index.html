@@ -35,7 +35,7 @@
   <div class="prose">
     <p><strong>Hours this week:</strong> 16</p>
 
-<p>This week, I spent most of my time understanding the <a href="https://github.com/certik/mlir"><code class="language-plaintext highlighter-rouge">mlir</code> C APIs and various MLIR dialects</a> and other related libraries. Specifically, I focused on the reasons why different compilers choose different MLIR dialects.</p>
+<p>This week, I spent most of my time understanding the <a href="https://github.com/certik/mlir">certik/mlir</a> C APIs and various MLIR dialects and other related libraries. Specifically, I focused on the reasons why different compilers choose different MLIR dialects.</p>
 
 <h2 id="progress-and-understanding">Progress and Understanding</h2>
 
@@ -70,13 +70,13 @@ flowchart TB
 <p>Based on these approaches, I have made an initial implementation of the MLIR API in LFortran codebase on the following branches:</p>
 
 <ul>
-  <li><strong>mlir1</strong> — Direct lowering to LLVM  IR: <a href="https://github.com/YashNagda17/lfortran/tree/mlir1">https://github.com/YashNagda17/lfortran/tree/mlir1</a></li>
-  <li><strong>mlir2</strong> — Lowering through multiple dialects: <a href="https://github.com/YashNagda17/lfortran/tree/mlir2">https://github.com/YashNagda17/lfortran/tree/mlir2</a></li>
+  <li><strong>mlir1</strong> — Direct lowering to LLVM  IR: hosted here: <a href="https://github.com/YashNagda17/lfortran/tree/mlir1" target="_blank" rel="noopener noreferrer">https://github.com/YashNagda17/lfortran/tree/mlir1</a></li>
+  <li><strong>mlir2</strong> — Lowering through multiple dialects: hosted here: <a href="https://github.com/YashNagda17/lfortran/tree/mlir2" target="_blank" rel="noopener noreferrer">https://github.com/YashNagda17/lfortran/tree/mlir2</a></li>
 </ul>
 
 <p>Both paths reuse LFortran’s existing LLVM IR → object code flow after MLIR translation.</p>
 
-<p>I also implemented debug flags (<code class="language-plaintext highlighter-rouge">--show-mlir</code>, <code class="language-plaintext highlighter-rouge">--show-mlir-llvm-dialect</code>, <code class="language-plaintext highlighter-rouge">--show-llvm-from-mlir</code>) and an environment switch (<code class="language-plaintext highlighter-rouge">USE_MLIR_Upstream=1</code>) to compare native C lowering vs upstream MLIR passes. I have used only the necessary codefiles from the <a href="https://github.com/certik/mlir">https://github.com/certik/mlir</a> repository, in these implementations, to keep the codefiles smaller.</p>
+<p>I also implemented debug flags (<code class="language-plaintext highlighter-rouge">--show-mlir</code>, <code class="language-plaintext highlighter-rouge">--show-mlir-llvm-dialect</code>, <code class="language-plaintext highlighter-rouge">--show-llvm-from-mlir</code>) and an environment switch (<code class="language-plaintext highlighter-rouge">USE_MLIR_Upstream=1</code>) to compare native C lowering vs upstream MLIR passes. I have used only the necessary codefiles from the <a href="https://github.com/certik/mlir">certik/mlir</a> repository, in these implementations, to keep the codefiles smaller.</p>
 
 <h2 id="next-steps">Next Steps</h2>
 
