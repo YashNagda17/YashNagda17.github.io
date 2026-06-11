@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Personal website of Yash Nagda">
+    <title>Week 3: GSoC Project Progress</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/main.css">
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="/">Yash Nagda</a>
+        <div class="topbar-links">
+          <nav class="primary-nav">
+          <a href="/">Home</a>
+          <a href="/blogs/">Blogs</a>
+          </nav>
+          <nav class="social-nav" aria-label="Social links">
+            <a href="mailto:yashnagda17@gmail.com">Email</a>
+            <a href="https://www.linkedin.com/in/yashnagda17/" target="_blank" rel="noreferrer">LinkedIn</a>
+            <a href="https://github.com/YashNagda17" target="_blank" rel="noreferrer">GitHub</a>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <article class="post">
+  <p class="eyebrow">Blog post</p>
+  <h1>Week 3: GSoC Project Progress</h1>
+  <p class="post-date">11 Jun 2026</p>
+  <div class="prose">
+    <p><strong>Hours this week:</strong> 16</p>
+
+<p><strong>Total hours:</strong> 53</p>
+
+<p>At the end of the second week, I had the following tasks to work upon:</p>
+<ul>
+  <li>Working on implementation of the ASR dialect, code cleanups and hosting a stable branch for others to test and give feedbacks for the same.</li>
+  <li>Working on the alternative for MachO backend, for x86_64 architecture.</li>
+</ul>
+
+<p>This week, I completed the first task, and hosted the stable branch for others to test and give feedbacks for the same. The branch is hosted at <a href="https://github.com/YashNagda17/lfortran/tree/mlir7">YashNagda17/lfortran <code class="language-plaintext highlighter-rouge">mlir7</code></a>.</p>
+
+<p>During the code-cleanups, I found many issues &amp; hackish design choices in the previous AI implementations, which were used for fast prototyping. I spent my time fixing these issues, and reviewing the architecture for the ASR Dialect support.</p>
+
+<p>In this post, I shall discuss the details of the implementation of the ASR dialect, and the support added for the same.</p>
+
+<p>Starting with usage, the <code class="language-plaintext highlighter-rouge">new-mlir</code> backend supports the following flags:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">--show-mlir-asr-dialect</code> to show the ASR dialect of the program.</li>
+  <li><code class="language-plaintext highlighter-rouge">--show-mlir-high-dialect</code> to show the high-level MLIR of the program.</li>
+  <li><code class="language-plaintext highlighter-rouge">--show-mlir-llvm-dialect</code> to show the LLVM dialect of the program.</li>
+</ul>
+
+<p>To give a high level overview, starting from initial ASR, we first add support for conversion of ASR to ASR Dialect. Then, we add support for conversion of ASR Dialect to high-level MLIR. Finally, we add support for conversion of high-level MLIR to LLVM dialect. For these two steps, we make use of APIs from the <a href="https://github.com/certik/mlir"><code class="language-plaintext highlighter-rouge">certik/mlir</code></a> repository, with few changes for lfortran. Finally, we use the existing code for the <code class="language-plaintext highlighter-rouge">--mlir</code> backend, to convert LLVM dialect to LLVM IR and generate the object file.</p>
+
+<p>The main pipeline is:</p>
+<pre><code class="language-mermaid">flowchart TB
+  A["Initial ASR"] --&gt; B["ASR Dialect"]
+  B --&gt; C["High-level MLIR"]
+  C --&gt; D["LLVM dialect MLIR"]
+  D --&gt; E["LLVM IR"]
+</code></pre>
+
+<h2 id="high-level-architecture">High-level architecture</h2>
+
+<p>The implementation can be understood as following layers.</p>
+
+<h3 id="1-external-mlir-foundation">1. External MLIR foundation</h3>
+
+<p>This commit adds <code class="language-plaintext highlighter-rouge">certik/mlir</code> as a git submodule under <code class="language-plaintext highlighter-rouge">src/mlir/upstream</code>. It is the external dependency that the <code class="language-plaintext highlighter-rouge">mlir-new</code> backend builds on, including the corec runtime and the MLIR C API implementation.</p>
+
+<p>Reference commit:</p>
+<ul>
+  <li><a href="https://github.com/lfortran/lfortran/commit/885213953ee174a6a9e44fcbcd76ab0219d077a9"><code class="language-plaintext highlighter-rouge">885213953</code></a> <code class="language-plaintext highlighter-rouge">mlir: register certik/mlir as git submodule at src/mlir/upstream</code></li>
+</ul>
+
+<h3 id="2-hosted-runtime-support-inside-lfortran">2. Hosted runtime support inside LFortran</h3>
+
+<p>The MLIR C API (<code class="language-plaintext highlighter-rouge">certik/mlir</code> corec) was designed for small freestanding programs, while LFortran is a normal hosted compiler binary. LFortran uses many dependencies, for memory operations and platform setup.</p>
+
+<p>Two important changes were made here:</p>
+<ul>
+  <li>LFortran-specific platform files were added under <code class="language-plaintext highlighter-rouge">src/mlir/lfortran/corec/platform/</code> so hosted builds use the normal libc path for memory and platform setup. This is for operations such as memcpy, memset, mmap, mprotect etc.</li>
+  <li>the buddy allocator was made to initialize only once, so repeated calls into the <code class="language-plaintext highlighter-rouge">mlir-new</code> pipeline in the same process does not corrupt/ crash the heap, by reinitializing the heap again and again. This might happen in the case of nested runtime builds, where the same process is used to compile multiple files.</li>
+</ul>
+
+<p>Reference commits:</p>
+<ul>
+  <li><a href="https://github.com/lfortran/lfortran/commit/e358e9477bf3b7cc30dabcb0cc43e007f6131c7a"><code class="language-plaintext highlighter-rouge">e358e9477</code></a> <code class="language-plaintext highlighter-rouge">mlir: add hosted LFortran corec platform overrides</code></li>
+  <li><a href="https://github.com/lfortran/lfortran/commit/5d102ced2a1439ecfb48db6f14b29fce4602b6fa"><code class="language-plaintext highlighter-rouge">5d102ced2</code></a> <code class="language-plaintext highlighter-rouge">mlir: make buddy_init idempotent for hosted MLIR use</code></li>
+</ul>
+
+<h3 id="3-asr-dialect-as-an-explicit-structural-ir-stage">3. ASR dialect as an explicit structural IR stage</h3>
+
+<p>The central architectural idea of <code class="language-plaintext highlighter-rouge">mlir-new</code> is to introduce a native ASR dialect instead of lowering ASR directly to high-level MLIR. In this design, every ASR constructor is represented as an <code class="language-plaintext highlighter-rouge">asr.*</code> operation whose structure resembles the original ASR node. This helps us to decouple the ASRv tree from the MLIR ecosystem, where changes in ASR tree needs to be supported only in the ASR dialect layer, and not in the MLIR ecosystem.</p>
+
+<p>Because ASR is large, this dialect cannot be maintained manually. So the dialect shape is generated from <code class="file-ref">src/libasr/ASR.asdl</code>. A generator script <code class="file-ref">src/libasr/asdl_to_asr_dialect.py</code> reads the ASDL grammar and produces the schema, op ids, create helpers, storage tables, print helpers, and lowering dispatch headers under <code class="language-plaintext highlighter-rouge">src/mlir/generated/</code>. So, every ASR node needs matching dialect metadata, C API helpers, storage rules, print rules, lowering tables, and visitor methods for lowering. Doing that by hand will be difficult to maintain, because adding one new ASR node would otherwise require updating many separate files manually</p>
+
+<p>On top of that, <code class="file-ref">src/mlir/lfortran/asr_dialect_storage_policy.h</code> defines the storage policy for fields that cannot be inferred safely from ASDL alone. This is where the design says whether a field becomes an attribute, operand, region, or symbol reference. This file is not autogenerated, and is reviewed like normal source code. ASR.asdl tells us what fields each ASR node has, but it does not say how those fields should be stored in MLIR: as attributes, operands, regions, or symbol references. For example, it lets us state clearly that DoLoop should use separate head, body, and orelse regions instead of flattening everything into operands. We classify each field into one of the following storage kinds:</p>
+<ul>
+  <li><strong>ASR_STORAGE_ATTR</strong> — scalars, enums, and strings (e.g. <code class="language-plaintext highlighter-rouge">realloc_lhs</code>, <code class="language-plaintext highlighter-rouge">kind</code>) are stored as MLIR attributes because they are compile-time metadata, not SSA values.</li>
+  <li><strong>ASR_STORAGE_TYPE_ATTR</strong> — optional type fields (e.g. <code class="language-plaintext highlighter-rouge">return_type?</code>) are stored as a <code class="language-plaintext highlighter-rouge">TypeAttr</code> when a type is metadata rather than the op’s primary result type.</li>
+  <li><strong>ASR_STORAGE_RESULT_TYPE</strong> — required <code class="language-plaintext highlighter-rouge">ttype</code> fields become the op’s MLIR result type so type information rides on the standard MLIR type system.</li>
+  <li><strong>ASR_STORAGE_OPERAND</strong> — single <code class="language-plaintext highlighter-rouge">expr</code> fields (e.g. <code class="language-plaintext highlighter-rouge">If.test</code>, <code class="language-plaintext highlighter-rouge">Assignment.value</code>) are stored as SSA operands so expression values flow between ops during lowering.</li>
+  <li><strong>ASR_STORAGE_OPTIONAL_OPERAND</strong> — optional <code class="language-plaintext highlighter-rouge">expr?</code> fields are stored as operands that may be absent, matching ASR’s optional expression slots without inventing dummy values.</li>
+  <li><strong>ASR_STORAGE_VARIADIC_OPERANDS</strong> — <code class="language-plaintext highlighter-rouge">expr</code> sequences are stored as variadic operands so multiple SSA values can be passed without wrapping each in its own region.</li>
+  <li><strong>ASR_STORAGE_REGION</strong> — <code class="language-plaintext highlighter-rouge">stmt</code>/<code class="language-plaintext highlighter-rouge">node</code> sequences and structural children (e.g. <code class="language-plaintext highlighter-rouge">Program.body</code>, <code class="language-plaintext highlighter-rouge">DoLoop.orelse</code>) live in named regions so nested statements and symbols stay hierarchical like ASR.</li>
+  <li><strong>ASR_STORAGE_OPTIONAL_REGION</strong> — optional structural fields (e.g. <code class="language-plaintext highlighter-rouge">Assignment.overloaded</code>) use a region that may be empty when the ASR field is absent.</li>
+  <li><strong>ASR_STORAGE_SYMBOL_REF_ATTR</strong> — symbol references (e.g. <code class="language-plaintext highlighter-rouge">Var.v</code>) are stored as <code class="language-plaintext highlighter-rouge">SymbolRefAttr</code> to point at entries in the enclosing symbol-table region.</li>
+  <li><strong>ASR_STORAGE_SYMBOL_REF_ARRAY_ATTR</strong> — symbol-reference sequences are stored as an array attribute when an op refers to multiple named symbols at once.</li>
+  <li><strong>ASR_STORAGE_OMITTED</strong> — fields such as <code class="language-plaintext highlighter-rouge">location</code>, <code class="language-plaintext highlighter-rouge">start_name</code>, and <code class="language-plaintext highlighter-rouge">end_name</code> are not stored on the op payload because MLIR already carries location separately and the other names are redundant in the dialect representation.</li>
+</ul>
+
+<p>Together, these generated and checked-in files define the exact structure of the ASR dialect at compile time.</p>
+
+<p>Reference commits:</p>
+<ul>
+  <li><a href="https://github.com/lfortran/lfortran/commit/81d1f0880e472ec576e9675f0ec7e9f535e85c0e"><code class="language-plaintext highlighter-rouge">81d1f0880</code></a> <code class="language-plaintext highlighter-rouge">asdl: add ASR dialect generator script</code></li>
+  <li><a href="https://github.com/lfortran/lfortran/commit/d39585cd6f35846d8b5e93e5e8a8e9966e2d9e3a"><code class="language-plaintext highlighter-rouge">d39585cd6</code></a> <code class="language-plaintext highlighter-rouge">asdl: add generated ASR dialect schema and tables</code></li>
+  <li><a href="https://github.com/lfortran/lfortran/commit/557bbf067e5e30b9c3c29f080665b0b7198a4b28"><code class="language-plaintext highlighter-rouge">557bbf067</code></a> <code class="language-plaintext highlighter-rouge">mlir: add ASR dialect storage policy and field readers</code></li>
+</ul>
+
+<h3 id="4-native-asr-dialect-runtime-and-lowering-implementation">4. Native ASR dialect runtime and lowering implementation</h3>
+
+<p>Next, we add the native ASR dialect runtime layer that converts the ASR Tree into the ASR Dialect in libasr to be used in the MLIR API in certik/mlir. We add the runtime layer that actually builds those ops, checks that they are structurally valid, prints them in a readable form, and lowers the supported subset further into high-level MLIR.</p>
+
+<p>The main API for the ASR dialect is initialized in <code class="file-ref">src/mlir/lfortran/asr_dialect_api.h:1</code>, which defines the stable boundary that the C++ ASR visitor can call. That header introduces <code class="language-plaintext highlighter-rouge">ASR_DialectOptions</code>, the tagged <code class="language-plaintext highlighter-rouge">ASR_DialectField</code> representation used to pass attrs, operands, and regions into op creation, and the <code class="language-plaintext highlighter-rouge">ASR_LoweringContext</code> / <code class="language-plaintext highlighter-rouge">ASR_SymSlot</code> state used during lowering. It also has a dispatch layer for the native and upstream implementations, currently disabled for upstream inside <code class="file-ref">src/mlir/lfortran/asr_dialect_api.c</code>.</p>
+
+<p>The core implementation is in <code class="file-ref">src/mlir/lfortran/asr_dialect_api_native.c:232</code>. This file is where schema-driven conversion of ASR nodes to ASR Dialect ops actually happens. <code class="language-plaintext highlighter-rouge">ASR_DialectCreateOpNative()</code> looks up the op schema, decides the result type, turns scalar fields into “asr.*” metadata attributes, turns expression fields into operands, attaches region-backed fields after op creation, and finally builds the MLIR op from the generated schema description. In other words, the generator tells us what the dialect should look like, and this file is the code that creates that structure at runtime. The same file also performs a basic verification. It reads through the ASR dialect tree, checks that required fields are present, checks that region contents match the expected element kind, verifies that scopes such as Program and Function really have the expected symtab, metadata, and body regions, and then performs symbol checks so asr.expr.var references actually point to names declared in the respective symbol table.</p>
+
+<p>Reference commit:</p>
+<ul>
+  <li><a href="https://github.com/lfortran/lfortran/commit/d210ad9a36372fbd1835ebe5345a1f107e94b481"><code class="language-plaintext highlighter-rouge">d210ad9a3</code></a> <code class="language-plaintext highlighter-rouge">mlir: add ASR dialect C API and native create/verify backend</code></li>
+</ul>
+
+<h3 id="5-lower-asr-dialect-to-high-level-mlir-and-llvm-dialect-mlir">5. Lower ASR dialect to high-level MLIR and LLVM dialect MLIR</h3>
+
+<p>After creating the ASR dialect, we need to lower it to high-level MLIR and then to LLVM dialect MLIR. We then use APIs from the <code class="language-plaintext highlighter-rouge">certik/mlir</code> repository, to lower the high-level MLIR to LLVM dialect MLIR. Here, we also add the LFortran-specific hooks for the later lowering stages. The first part is <code class="file-ref">mlir_lfortran_hooks.c</code> and <code class="file-ref">mlir_lfortran_hooks.h</code>. These files contain LFortran specific fixes and custom handling, for handling the special cases that might arrive in high level dialect. For example, the current ASR lowering represents variables using memref&lt;1xi32&gt; slots, so the later LLVM-lowering stages need custom logic to load from them, store to them, and compute addresses correctly. The same files also handle things like turning vector.print into a call to printf, and fixing index and GEP details before the LLVM stage. Then <code class="file-ref">mlir_lower_to_llvm.c</code> and <code class="file-ref">mlir_translate_to_llvm_ir.c</code> implement the next two pipeline stages. The first one takes the high-level MLIR produced after ASR dialect lowering and converts it into LLVM-dialect MLIR, which is what <code class="language-plaintext highlighter-rouge">--show-mlir-llvm-dialect</code> prints. The second one takes that LLVM-dialect MLIR and translates it into LLVM IR text, which is needed for later object-file generation and for flags such as <code class="language-plaintext highlighter-rouge">--show-llvm</code>.</p>
+
+<p>Reference commits:</p>
+<ul>
+  <li><a href="https://github.com/lfortran/lfortran/commit/51a5e0c98be37072e8692b6035cf906a062d4841"><code class="language-plaintext highlighter-rouge">51a5e0c98</code></a> <code class="language-plaintext highlighter-rouge">build: add corec and ASR dialect MLIR CMake targets</code></li>
+</ul>
+
+<h3 id="6-mlir-and-llvm-bridge-layer">6. MLIR and LLVM bridge layer</h3>
+
+<p>After the ASR dialect is lowered to high-level MLIR, the pipeline still needs to move through LLVM dialect MLIR and then LLVM IR. This required both build-system support and a set of LFortran-specific files for linking the MLIR and LLVM libraries. We lower using the APIs from the <code class="language-plaintext highlighter-rouge">certik/mlir</code> repository, and once the LLVM Dialect MLIR is generated, we use the existing code for the <code class="language-plaintext highlighter-rouge">--mlir</code> backend, to convert LLVM dialect to LLVM IR and generate the object file.</p>
+
+<p>The build side does three things:</p>
+<ul>
+  <li>discovers and links the required static MLIR and LLVM archives</li>
+  <li>enables the MLIR subtree only when both <code class="language-plaintext highlighter-rouge">WITH_LLVM</code> and <code class="language-plaintext highlighter-rouge">WITH_MLIR</code> are enabled</li>
+  <li>builds the three main MLIR-side libraries needed by <code class="language-plaintext highlighter-rouge">mlir-new</code></li>
+</ul>
+
+<p>The runtime side adds LFortran-specific hooks for the later lowering stages:</p>
+<ul>
+  <li><code class="file-ref">mlir_lower_to_llvm.c</code> converts high-level MLIR to LLVM dialect MLIR</li>
+  <li><code class="file-ref">mlir_translate_to_llvm_ir.c</code> converts LLVM dialect MLIR to LLVM IR text</li>
+</ul>
+
+<p>So this layer is used to connect all the MLIR lowering files, for LFortran builds.</p>
+
+<p>Reference commits:</p>
+<ul>
+  <li><a href="https://github.com/lfortran/lfortran/commit/fc06c202fb1e536c78a9f5f69f6139a5d7196963"><code class="language-plaintext highlighter-rouge">fc06c202f</code></a> <code class="language-plaintext highlighter-rouge">build: add MLIR static archive link helper</code></li>
+  <li><a href="https://github.com/lfortran/lfortran/commit/20c7228b79522fb2e88c78e91b9e09de8f01e364"><code class="language-plaintext highlighter-rouge">20c7228b7</code></a> <code class="language-plaintext highlighter-rouge">build: enable MLIR in root and src CMake</code></li>
+  <li><a href="https://github.com/lfortran/lfortran/commit/51a5e0c98be37072e8692b6035cf906a062d4841"><code class="language-plaintext highlighter-rouge">51a5e0c98</code></a> <code class="language-plaintext highlighter-rouge">build: add corec and ASR dialect MLIR CMake targets</code></li>
+</ul>
+
+<h3 id="7-libasr-integration-and-user-facing-pipeline">7. libasr integration and user-facing pipeline</h3>
+
+<p>The final step is integrating everything into the normal LFortran code generation flow. This happens in two parts.</p>
+
+<p>First, <code class="language-plaintext highlighter-rouge">libasr</code> is linked so the new MLIR libraries and headers are visible to codegen only in MLIR-enabled builds. It also adds the <code class="language-plaintext highlighter-rouge">asr_to_mlir_new</code> files, which coordinates the full pipeline:</p>
+<ul>
+  <li>initialize hosted MLIR runtime once</li>
+  <li>run the ASR-to-ASR-dialect visitor</li>
+  <li>verify the ASR dialect module</li>
+  <li>lower it to high-level MLIR</li>
+  <li>continue to LLVM dialect MLIR and LLVM IR when requested</li>
+  <li>package stage dumps into <code class="language-plaintext highlighter-rouge">MLIRModule</code></li>
+</ul>
+
+<p>Second, the <code class="language-plaintext highlighter-rouge">ASRToAsrDialectVisitor</code> itself converts a real <code class="language-plaintext highlighter-rouge">ASR::TranslationUnit_t</code> into ASR dialect operations. This visitor is the bridge from typed C++ ASR nodes to the C-based ASR dialect API. It handles the structural scaffolding for programs, functions, symbol tables, bodies, and control flow, while the longer list of <code class="language-plaintext highlighter-rouge">visit_*</code> methods is generated from <code class="file-ref">ASR.asdl</code>.</p>
+
+<p>Finally, the CLI and evaluator expose this pipeline to users. The new backend can now be selected with <code class="language-plaintext highlighter-rouge">--backend=mlir-new</code>, and the new stage-specific dump flags can stop the pipeline at different stages without needing a custom harness.</p>
+
+<p>Reference commits:</p>
+<ul>
+  <li><a href="https://github.com/lfortran/lfortran/commit/18f5c09db178e706361f719b138fe8845ac9fdf6"><code class="language-plaintext highlighter-rouge">18f5c09db</code></a> <code class="language-plaintext highlighter-rouge">libasr: wire ASR dialect libraries into codegen build</code></li>
+  <li><a href="https://github.com/lfortran/lfortran/commit/2d4bec6df91d688b60610974532afeb619efc8b0"><code class="language-plaintext highlighter-rouge">2d4bec6df</code></a> <code class="language-plaintext highlighter-rouge">codegen: add ASR-to-ASR-dialect visitor</code></li>
+  <li><a href="https://github.com/lfortran/lfortran/commit/f2e43b68b19cb5dd2b7c6b76492f3f516442b068"><code class="language-plaintext highlighter-rouge">f2e43b68b</code></a> <code class="language-plaintext highlighter-rouge">cli: wire mlir-new backend flags and MLIRModule stage dumps</code></li>
+</ul>
+
+<h2 id="how-the-full-flow-works">How the full flow works</h2>
+
+<p>Starting from a normal Fortran program, the flow is now:</p>
+
+<pre><code class="language-mermaid">flowchart TB
+  A["LFortran parses the source and produces ASR"] --&gt; B["ASRToAsrDialectVisitor converts that ASR into an explicit ASR dialect module"]
+  B --&gt; C["ASR_DialectVerify checks the structural correctness of that module"]
+  C --&gt; D["ASR_DialectPrint can dump the stage-1 ASR dialect form"]
+  D --&gt; E["ASR_DialectLowerToHighMLIR lowers the supported subset into high-level MLIR"]
+  E --&gt; F["mlir_lower_to_llvm.c lowers the result into LLVM dialect MLIR"]
+  F --&gt; G["mlir_translate_to_llvm_ir.c translates that module into LLVM IR"]
+  G --&gt; H["The existing object-file path can then continue from LLVM IR as usual"]
+</code></pre>
+
+<h2 id="commands-to-use-the-new-architecture">Commands to use the new architecture:</h2>
+
+<p>The main user-facing commands for this architecture are:</p>
+
+<div class="language-bash playcard highlighter-rouge"><div class="highlight"><pre class="highlight"><code>lfortran <span class="nt">--show-mlir-asr-dialect</span> a.f90
+lfortran <span class="nt">--show-mlir-high-dialect</span> a.f90
+lfortran <span class="nt">--show-mlir-llvm-dialect</span> a.f90
+lfortran <span class="nt">--backend</span><span class="o">=</span>mlir-new a.f90
+</code></pre></div></div>
+
+<p>These flags correspond directly to the staged architecture described above, which is one of the main reasons the new design is easier to explain and debug. Also, the Version-0 implementation of the ASR dialect is now ready, and I have hosted the stable branch for others to test and give feedbacks for the same. The same link for the branch is <a href="https://github.com/YashNagda17/lfortran/tree/mlir7">YashNagda17/lfortran <code class="language-plaintext highlighter-rouge">mlir7</code></a>.</p>
+
+<p>Once this task was completed, I began to work on the second task, to figure the alternative for MachO backend, for x86_64 architecture. This might need an implementation using the <code class="language-plaintext highlighter-rouge">ELF</code> file format. This task is still in progress, and I shall update the progress here in coming weeks.</p>
+
+<h2 id="next-steps">Next Steps:</h2>
+
+<ul>
+  <li>Work on the feedback received on the ASR dialect implementation.</li>
+  <li>Work on the <code class="language-plaintext highlighter-rouge">ELF</code> implementation as an alternative for MachO backend, for x86_64 architecture.</li>
+</ul>
+
+<h2 id="acknowledgments">Acknowledgments</h2>
+
+<p>A huge thanks to my mentors, <a href="https://github.com/certik">Ondřej Čertík</a>, <a href="https://github.com/Pranavchiku">Pranav Goswami</a>, <a href="https://github.com/HarshitaKalani">Harshita Kalani</a> &amp; other contributors for helping me to work on this project.</p>
+
+  </div>
+</article>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script src="/assets/js/mermaid-init.js"></script>
+
+
+      </main>
+    </div>
+  </body>
+</html>

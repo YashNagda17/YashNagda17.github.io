@@ -259,6 +259,19 @@ code {
   font-size: 0.95em;
 }
 
+.prose code.file-ref {
+  color: #0bbbd6;
+  font-weight: 600;
+}
+
+.prose a code.file-ref {
+  color: #0bbbd6;
+}
+
+.prose a:hover code.file-ref {
+  color: #0797ad;
+}
+
 .prose .playcard,
 .prose pre.playcard,
 .prose .highlighter-rouge.playcard {
