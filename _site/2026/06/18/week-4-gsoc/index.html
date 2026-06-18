@@ -63,10 +63,18 @@
   G --&gt; H["Object File"]
 </code></pre>
 
-<p>This path was roughly implemented in the week-2 work, but it was not complete and prototype based. So, this week, I worked on completing the implementation of the same, for next weeks. This path shall help us to create a faster backend for the lfortran compiler. This backend, coupled with our binary creation pipeline, shall help us to create a faster backend for the lfortran compiler. 
-So, based on the feedbacks, I worked on a robust implementation of this LLVM Dialect backend, using the APIs. The commits here are arranged logically, based on few learnings from other branches as well, to make things work simpler &amp; robust here. Also, between the previous implementation and current work, there was a lot of implementation changes in the upstream <a href="https://github.com/certik/mlir"><code class="language-plaintext highlighter-rouge">certik/mlir</code></a> repository. So, this work involved integrating those changes as well in this implementation.</p>
+<p>This path was roughly implemented in the <a href="../../05/week-2-gsoc/">week-2 work</a>, but it was not complete and prototype based. So, this week, I worked on completing the implementation of the same, for next weeks. This path shall help us to create a faster backend for the lfortran compiler. This backend, coupled with our binary creation pipeline, shall help us to create a faster backend for the lfortran compiler. 
+So, based on the feedbacks, I worked on a robust implementation of this LLVM Dialect backend, using the APIs. The commits here are arranged logically, based on few learnings from other branches as well, to make things work simpler here. Also, between the previous implementation and current work, there was a lot of implementation changes in the upstream <a href="https://github.com/certik/mlir"><code class="language-plaintext highlighter-rouge">certik/mlir</code></a> repository. So, this work involved integrating those changes as well in this implementation. Finally, using the upstream APIs in <a href="https://github.com/certik/mlir"><code class="language-plaintext highlighter-rouge">certik/mlir</code></a> this backend lowering ASR into LLVM dialect.</p>
 
 <p>This work is hosted here: <a href="https://github.com/YashNagda17/lfortran/tree/mlir8-llvm-lowering">mlir8-llvm-lowering</a></p>
+
+<p>This work introduces two new baqckend options in the lfortran compiler:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">--backend=mlir-native</code> to use the native backend implementation.</li>
+  <li><code class="language-plaintext highlighter-rouge">--backend=mlir-upstream</code> to use the upstream MLIR backend implementation from the APIs.</li>
+</ul>
+
+<p>These helps us to compare both the backends for lfortran code for logic, performance etc.</p>
 
 <p>Few of the commits are leveraged from the previous implementations, using the learnings from those commits to make things work simpler here. This branch can be used directly in future for our own backend implementations, from LLVM Dialect. Also, it can be easier to integrate ASR dialects here as well.</p>
 
