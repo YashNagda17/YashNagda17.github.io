@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Personal website of Yash Nagda">
+    <title>Week 4: GSoC Project Progress</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/main.css">
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="/">Yash Nagda</a>
+        <div class="topbar-links">
+          <nav class="primary-nav">
+          <a href="/">Home</a>
+          <a href="/blogs/">Blogs</a>
+          </nav>
+          <nav class="social-nav" aria-label="Social links">
+            <a href="mailto:yashnagda17@gmail.com">Email</a>
+            <a href="https://www.linkedin.com/in/yashnagda17/" target="_blank" rel="noreferrer">LinkedIn</a>
+            <a href="https://github.com/YashNagda17" target="_blank" rel="noreferrer">GitHub</a>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <article class="post">
+  <p class="eyebrow">Blog post</p>
+  <h1>Week 4: GSoC Project Progress</h1>
+  <p class="post-date">18 Jun 2026</p>
+  <div class="prose">
+    <p><strong>Hours this week:</strong> 15</p>
+
+<p><strong>Total hours:</strong> 68</p>
+
+<p>At the end of the third week, I had the following tasks to work upon:</p>
+<ul>
+  <li>Work on the feedback received on the ASR dialect implementation.</li>
+  <li>Work on the <code class="language-plaintext highlighter-rouge">ELF</code> implementation as an alternative for MachO backend, for x86_64 architecture.</li>
+</ul>
+
+<p>Continuing this week, as per the feedbacks, I worked on two different tasks:</p>
+<ul>
+  <li>Create a fast lfortran backend using LLVM Dialect.</li>
+  <li>Work on the <code class="language-plaintext highlighter-rouge">ELF</code> implementation as an alternative for MachO backend, for x86_64 architecture.</li>
+</ul>
+
+<h3 id="task-1-create-a-fast-lfortran-backend-using-llvm-dialect">Task 1: Create a fast lfortran backend using LLVM Dialect:</h3>
+
+<p>For the following path:</p>
+
+<pre><code class="language-mermaid">flowchart TB
+  A["Fortran"] --&gt; B["AST"]
+  B --&gt; C["Initial ASR"]
+  C --&gt; D["Run all Passes"]
+  D --&gt; E["Final ASR"]
+  E --&gt; F["LLVM MLIR Dialect"]
+  F --&gt; G["LLVM IR"]
+  G --&gt; H["Object File"]
+</code></pre>
+
+<p>This path was roughly implemented in the week-2 work, but it was not complete and prototype based. So, this week, I worked on completing the implementation of the same, for next weeks. This path shall help us to create a faster backend for the lfortran compiler. This backend, coupled with our binary creation pipeline, shall help us to create a faster backend for the lfortran compiler. 
+So, based on the feedbacks, I worked on a robust implementation of this LLVM Dialect backend, using the APIs. The commits here are arranged logically, based on few learnings from other branches as well, to make things work simpler &amp; robust here. Also, between the previous implementation and current work, there was a lot of implementation changes in the upstream <a href="https://github.com/certik/mlir"><code class="language-plaintext highlighter-rouge">certik/mlir</code></a> repository. So, this work involved integrating those changes as well in this implementation.</p>
+
+<p>This work is hosted here: <a href="https://github.com/YashNagda17/lfortran/tree/mlir8-llvm-lowering">mlir8-llvm-lowering</a></p>
+
+<p>Few of the commits are leveraged from the previous implementations, using the learnings from those commits to make things work simpler here. This branch can be used directly in future for our own backend implementations, from LLVM Dialect. Also, it can be easier to integrate ASR dialects here as well.</p>
+
+<p>This work, together with ASR dialect support, made in previous weeks, and the platform specific fixes shall give us building blocks for a new LLVM backend. These changes are still in progress and in isolation. I am exicted to make them work together, however, few changes might be needed to make this work.</p>
+
+<h3 id="task-2-work-on-the-elf-implementation-as-an-alternative-for-macho-backend-for-x86_64-architecture">Task 2: Work on the <code class="language-plaintext highlighter-rouge">ELF</code> implementation as an alternative for MachO backend, for x86_64 architecture.</h3>
+
+<p>Here, I worked on the X86 backend of the upstream <a href="https://github.com/certik/mlir"><code class="language-plaintext highlighter-rouge">certik/mlir</code></a> repository, to create a custom ELF backend for the x86_64 architecture. This backend is an alternative for the MachO backend, for the x86_64 architecture.</p>
+
+<p>This work is hosted here: <a href="https://github.com/YashNagda17/mlir/tree/x861">mlir8-x86-backend</a></p>
+
+<p>This work is similar to aarch backend, with few operational changes for x86 backend. But, by then this work was developed, <a href="https://github.com/certik">Ondřej Čertík</a> made the same x86 backend changes as well, which was ultimately merged into the repository here: <a href="https://github.com/certik/mlir/pull/196">PR 196</a>. So, this work helped me to understand the x86 backend, but it won’t be used directly used in the future work, as of now.</p>
+
+<p>Next steps:</p>
+<ul>
+  <li>Since x86 backend infrastructure is setup in <code class="language-plaintext highlighter-rouge">certik/mlir</code> repository, now I am focusing on expanding the x86 backend implementation for all tests in the repository.</li>
+  <li>Using the LLVM Dialect path, to use the custom backend implementations.</li>
+</ul>
+
+<h2 id="acknowledgments">Acknowledgments</h2>
+
+<p>A huge thanks to my mentors, <a href="https://github.com/certik">Ondřej Čertík</a>, <a href="https://github.com/Pranavchiku">Pranav Goswami</a>, <a href="https://github.com/HarshitaKalani">Harshita Kalani</a> &amp; other contributors for helping me to work on this project.</p>
+
+  </div>
+</article>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script src="/assets/js/mermaid-init.js"></script>
+
+
+      </main>
+    </div>
+  </body>
+</html>
