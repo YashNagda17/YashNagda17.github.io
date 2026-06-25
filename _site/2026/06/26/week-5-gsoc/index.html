@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Personal website of Yash Nagda">
+    <title>Week 5: GSoC Project Progress</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/main.css">
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="/">Yash Nagda</a>
+        <div class="topbar-links">
+          <nav class="primary-nav">
+          <a href="/">Home</a>
+          <a href="/blogs/">Blogs</a>
+          </nav>
+          <nav class="social-nav" aria-label="Social links">
+            <a href="mailto:yashnagda17@gmail.com">Email</a>
+            <a href="https://www.linkedin.com/in/yashnagda17/" target="_blank" rel="noreferrer">LinkedIn</a>
+            <a href="https://github.com/YashNagda17" target="_blank" rel="noreferrer">GitHub</a>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <article class="post">
+  <p class="eyebrow">Blog post</p>
+  <h1>Week 5: GSoC Project Progress</h1>
+  <p class="post-date">26 Jun 2026</p>
+  <div class="prose">
+    <p><strong>Hours this week:</strong> 18</p>
+
+<p><strong>Total hours:</strong> 86</p>
+
+<p>At the end of the fourth week, I had the following tasks to work upon:</p>
+<ul>
+  <li>Since x86 backend infrastructure is setup in <a href="https://github.com/certik/mlir"><code class="language-plaintext highlighter-rouge">certik/mlir</code></a> repository, now I am focusing on expanding the x86 backend implementation for all tests in the repository.</li>
+  <li>Using the LLVM Dialect path, to use the custom backend implementations.</li>
+</ul>
+
+<p>This week, I worked upon the first task, to expand the x86 backend implementation for all tests in the repository. And by the time of writing this blog, I have expanded the x86-64 backend to support <strong>220 tests out of 226</strong> in the <a href="https://github.com/certik/mlir"><code class="language-plaintext highlighter-rouge">certik/mlir</code></a> repository. Before this work, only 125 tests were working with the x86-64 backend. This effort also involved understanding the x86 backend tests, as well as the new fixes which came along the way.</p>
+
+<p>This PR is created here: <a href="https://github.com/certik/mlir/pull/217">PR: 217</a></p>
+
+<p>In this blog, I would like to discuss the work done during this week, specifically for this PR, to make all the tests work with the x86-64 backend.</p>
+
+<h2 id="commit-1-short-circuit-correctness-for-llvmcond_br-on-the-elf-backend">Commit 1: Short-circuit correctness for llvm.cond_br on the ELF backend</h2>
+
+<p><strong>Commit:</strong> <a href="https://github.com/certik/mlir/pull/217/changes/70f41ce1f2c91e557d44272a2170fd8443cd630c"><code class="language-plaintext highlighter-rouge">fix: register short_circuit.tc for the elf backend</code></a></p>
+
+<p><strong>Problem:</strong> In C, <code class="language-plaintext highlighter-rouge">&amp;&amp;</code> and <code class="language-plaintext highlighter-rouge">||</code> do not run every part of the condition. For example, in <code class="language-plaintext highlighter-rouge">if ((n != 0) &amp;&amp; (100 / n &gt; 0))</code>, when <code class="language-plaintext highlighter-rouge">n</code> is <code class="language-plaintext highlighter-rouge">0</code>, the program must not evaluate <code class="language-plaintext highlighter-rouge">100 / n</code>. tinyC lowers this into <code class="language-plaintext highlighter-rouge">llvm.cond_br</code> branches in MLIR. Some branches pass extra values into the next block (like a phi node). Our old x64 ELF backend copied those values for <strong>both</strong> the true and false branch <strong>before</strong> it even checked the condition. So the “inner” part of the condition could still run when it should have been skipped.</p>
+
+<p><strong>Fixes implemented:</strong></p>
+
+<p>First, we changed the order of work inside <code class="language-plaintext highlighter-rouge">llvm.cond_br</code>. The backend now loads the condition, tests it, and only then decides where to go. For example, writing <code class="language-plaintext highlighter-rouge">if (a)</code> in C and only running the <code class="language-plaintext highlighter-rouge">then</code> block when <code class="language-plaintext highlighter-rouge">a</code> is true. For <code class="language-plaintext highlighter-rouge">if ((n != 0) &amp;&amp; (100 / n &gt; 0))</code>, when <code class="language-plaintext highlighter-rouge">n == 0</code> the code jumps straight to the false path and never touches the inner check. When <code class="language-plaintext highlighter-rouge">n != 0</code>, it goes to the true path and only then runs the next piece. This matches how <code class="language-plaintext highlighter-rouge">&amp;&amp;</code> and <code class="language-plaintext highlighter-rouge">||</code> behave in normal C compilers. Second, when a branch edge carries block arguments, we added a small “landing pad”: copy the values with <code class="language-plaintext highlighter-rouge">emit_edge()</code>, then jump to the real block. When the edge has no arguments, we branch directly with no extra pad. Example: a simple <code class="language-plaintext highlighter-rouge">if (x)</code> with no values passed into the next block stays a plain jump; a chained <code class="language-plaintext highlighter-rouge">&amp;&amp;</code> that passes a value into the inner test uses the pad only on the path that actually needs it. A helper called <code class="language-plaintext highlighter-rouge">patch_rel32_at()</code> fixes up jump targets for these pads (same idea as the branch patch loop at the end of each function).</p>
+
+<h2 id="commit-2-function-pointers-and-indirect-calls-on-the-elf-backend">Commit 2: Function pointers and indirect calls on the ELF backend</h2>
+
+<p><strong>Commit:</strong> <a href="github.com/certik/mlir/pull/217/commits/19a959b327433f739b5e88bb98d6c5656e87f71c"><code class="language-plaintext highlighter-rouge">fix: add support for function pointer based tests on elf backend</code></a></p>
+
+<p><strong>Problem:</strong> Function pointers did not work on the ELF backend. For the code: <code class="language-plaintext highlighter-rouge">int add(int a, int b) { return a + b; }</code> and in <code class="language-plaintext highlighter-rouge">main</code>, <code class="language-plaintext highlighter-rouge">int (*fp)(int,int) = &amp;add; fp(2, 3);</code>. Three things were broken. (1) Getting the address <code class="language-plaintext highlighter-rouge">&amp;add</code> failed because the backend only knew how to load <strong>data</strong> globals (like <code class="language-plaintext highlighter-rouge">int x</code>), not <strong>function</strong> symbols. (2) Calling through <code class="language-plaintext highlighter-rouge">fp</code> failed because the backend only supported <code class="language-plaintext highlighter-rouge">call @add(...)</code> with a fixed name, not <code class="language-plaintext highlighter-rouge">call</code> through a register containing function pointer. (3) The function <code class="language-plaintext highlighter-rouge">add</code> didn’t emit into the ELF file because <code class="language-plaintext highlighter-rouge">main</code> never called <code class="language-plaintext highlighter-rouge">@add</code> directly.</p>
+
+<p><strong>Fixes implemented:</strong></p>
+
+<p>First, we fixed how <code class="language-plaintext highlighter-rouge">addressof</code> works in <code class="language-plaintext highlighter-rouge">load_val()</code>. If the name is a data global (e.g. <code class="language-plaintext highlighter-rouge">addressof @my_counter</code>), we still use <code class="language-plaintext highlighter-rouge">lea_rip_data</code> like before. If it is not in the data map for example <code class="language-plaintext highlighter-rouge">addressof @add</code> or <code class="language-plaintext highlighter-rouge">addressof @printf</code>, we use <code class="language-plaintext highlighter-rouge">lea_rip_func</code>, which emits <code class="language-plaintext highlighter-rouge">lea reg, [rip + @symbol]</code> with a text-section relocation. Few helpers encode the information and we use them to resolve the function pointer into function address.</p>
+
+<p>Second, we added indirect call support in <code class="language-plaintext highlighter-rouge">llvm.call</code> lowering. A direct call like <code class="language-plaintext highlighter-rouge">call @add(2, 3)</code> still uses <code class="language-plaintext highlighter-rouge">emit_direct_call()</code> which translatates to one <code class="language-plaintext highlighter-rouge">E8 rel32</code> instruction. An indirect call has no callee name; operand 0 is the function pointer. We load that pointer into <code class="language-plaintext highlighter-rouge">r11</code>, skip it when setting up arguments (<code class="language-plaintext highlighter-rouge">arg_base = 1</code>), run the same as a normal call (reg args in <code class="language-plaintext highlighter-rouge">rdi/rsi/...</code>, stack args pushed, etc.), then emit <code class="language-plaintext highlighter-rouge">call *r11</code>. Example: <code class="language-plaintext highlighter-rouge">fp(2, 3)</code> becomes load <code class="language-plaintext highlighter-rouge">fp</code> -&gt; write <code class="language-plaintext highlighter-rouge">2</code> and <code class="language-plaintext highlighter-rouge">3</code> in arguments -&gt; jump through the pointer.</p>
+
+<p>Third, we extended reachability so address-taken functions get emitted. The backend already scans from <code class="language-plaintext highlighter-rouge">main</code> and follows direct calls like <code class="language-plaintext highlighter-rouge">call @printf</code>. We add: when scanning a reachable function, if we see <code class="language-plaintext highlighter-rouge">llvm.mlir.addressof @add</code> and <code class="language-plaintext highlighter-rouge">@add</code> is not a data global, we add <code class="language-plaintext highlighter-rouge">add</code> to the this function set. So, while emitting functions, we emit indirect calls through function pointers as well.</p>
+
+<h2 id="commit-3-pointer-global-initialization-on-the-elf-backend">Commit 3: Pointer-global initialization on the ELF backend</h2>
+
+<p><strong>Commit:</strong> <a href="github.com/certik/mlir/pull/217/commits/98483f4497d50b667e3658b30d4bd90ebc71a26b"><code class="language-plaintext highlighter-rouge">fix: initialize pointer globals from addressof regions on elf backend</code></a></p>
+
+<p><strong>Problem:</strong> The x64 ELF backend could only initialize globals from a plain <code class="language-plaintext highlighter-rouge">value</code> attribute: integers, floats, and string bytes embedded directly in the data storage. Many pointer globals do not use that form. When tinyC emits something like <code class="language-plaintext highlighter-rouge">char *greeting = "Hi"</code>, it lowers to two globals: a string literal (e.g. <code class="language-plaintext highlighter-rouge">@.str.0</code>) with a <code class="language-plaintext highlighter-rouge">value</code> attribute, and a pointer global (<code class="language-plaintext highlighter-rouge">@greeting</code>) whose initializer is a <strong>region</strong>, not a value which is essentially <code class="language-plaintext highlighter-rouge">addressof @.str.0; return</code>.</p>
+
+<p><strong>Fix:</strong> For a pointer global like <code class="language-plaintext highlighter-rouge">char *greeting = "Hi"</code>, the backend must store the <strong>address</strong> of the string, not leave the slot as zero. We do that once at program startup, before <code class="language-plaintext highlighter-rouge">main</code> runs. The same idea is used in aarch backend as well in filling in pointer globals before user code starts. We scan globals during collection: plain values (numbers, strings) are written into the data section as before and pointer globals that mean “point at <code class="language-plaintext highlighter-rouge">@some_symbol</code>” are recorded as pending symbols. After all globals are collected, we resolve each pending entry to a slot offset (this also handles forward references, where the target global appears later in the file). In synthesised <code class="language-plaintext highlighter-rouge">_start</code>, we emit a short sequence per pointer: load the target address, load the pointer slot address, store so <code class="language-plaintext highlighter-rouge">greeting</code> already points at <code class="language-plaintext highlighter-rouge">"Hi"</code> when <code class="language-plaintext highlighter-rouge">main</code> calls <code class="language-plaintext highlighter-rouge">printf</code>. This fixed the <code class="language-plaintext highlighter-rouge">globals</code> test on ELF; <code class="language-plaintext highlighter-rouge">global_ptr_array</code> and <code class="language-plaintext highlighter-rouge">global_ptr_ptr</code> benefit from the same change.</p>
+
+<h2 id="commit-4-support-for-sqrt-on-the-elf-backend">Commit 4: Support for sqrt() on the ELF backend</h2>
+
+<p><strong>Commit:</strong> <a href="https://github.com/certik/mlir/pull/217/commits/af7e610f404eb7399159316cb4def92e19aade25"><code class="language-plaintext highlighter-rouge">fix: add support for </code>sqrt()<code class="language-plaintext highlighter-rouge"> on the ELF Backend</code></a></p>
+
+<p>We also added a small fix for <code class="language-plaintext highlighter-rouge">sqrt()</code> on the ELF backend: tinyC lowers <code class="language-plaintext highlighter-rouge">sqrt(x)</code> to <code class="language-plaintext highlighter-rouge">llvm.intr.sqrt</code>, which the x64 backend did not recognize and reported as an unsupported op. In <code class="language-plaintext highlighter-rouge">lower_fp_op()</code> we now handle it like other unary float ops. We load the operand into an XMM register, emit <code class="language-plaintext highlighter-rouge">sqrtss</code> for <code class="language-plaintext highlighter-rouge">f32</code> or <code class="language-plaintext highlighter-rouge">sqrtsd</code> for <code class="language-plaintext highlighter-rouge">f64</code>, and store the result back. This enables us to calculate the square root of numbers and print the result.</p>
+
+<h2 id="commit-5-malloc--free-on-the-elf-backend">Commit 5: malloc / free on the ELF backend</h2>
+
+<p><strong>Commit:</strong> <a href="https://github.com/certik/mlir/pull/217/commits/5d1befc883252f3ed351d9d7a62cad20f300561d"><code class="language-plaintext highlighter-rouge">fix: fix </code>malloc<code class="language-plaintext highlighter-rouge"> and </code>free<code class="language-plaintext highlighter-rouge"> calls on the ELF Backend</code></a></p>
+
+<p>Functions with malloc and free calls linked on ELF but crashed on the first <code class="language-plaintext highlighter-rouge">malloc()</code>. This was because <code class="language-plaintext highlighter-rouge">platform_heap_grow</code> failed in <code class="language-plaintext highlighter-rouge">buddy.c</code> as the heap was never set up. This was because of missing <code class="language-plaintext highlighter-rouge">platform_init()</code> call in <code class="language-plaintext highlighter-rouge">_start</code> for linux platform.h file. We need to call <code class="language-plaintext highlighter-rouge">platform_init()</code> from <code class="language-plaintext highlighter-rouge">_start</code> so that the heap is set up before the first <code class="language-plaintext highlighter-rouge">malloc()</code> call. This was fixed by calling <code class="language-plaintext highlighter-rouge">platform_init()</code> from <code class="language-plaintext highlighter-rouge">_start</code> in <code class="language-plaintext highlighter-rouge">synth_start()</code> function. This function is called once at program startup, before <code class="language-plaintext highlighter-rouge">main</code> runs.</p>
+
+<h2 id="commit-6-rename-test-entry-to-app_main-on-elf-backend">Commit 6: Rename test entry to app_main on ELF backend</h2>
+
+<p><strong>Commit:</strong> <a href="https://github.com/certik/mlir/pull/217/changes/47c70bb93fc36d5afd5e1dba882d1876212562cc"><code class="language-plaintext highlighter-rouge">fix: rename </code>main<code class="language-plaintext highlighter-rouge"> to </code>app_main<code class="language-plaintext highlighter-rouge"> for elf backends</code></a></p>
+
+<p>On native, wasm, and macho backends the tests use <code class="language-plaintext highlighter-rouge">#define main app_main</code> so the test body keeps a stable symbol name while the platform supplies the real entry point. ELF was missing that rename, so <code class="language-plaintext highlighter-rouge">func_macro</code> printed <code class="language-plaintext highlighter-rouge">main</code> from <code class="language-plaintext highlighter-rouge">__func__</code> instead of the expected <code class="language-plaintext highlighter-rouge">app_main</code>. This commit applies the same pattern in <code class="language-plaintext highlighter-rouge">run_tinyc_tests.py</code>: ELF unity now renames the test to <code class="language-plaintext highlighter-rouge">app_main</code> and adds a thin <code class="language-plaintext highlighter-rouge">main()</code> wrapper that calls it (platform init stays in synthesised <code class="language-plaintext highlighter-rouge">_start</code>), then registered <code class="language-plaintext highlighter-rouge">func_macro</code> on the <code class="language-plaintext highlighter-rouge">elf</code> target in <code class="language-plaintext highlighter-rouge">tests.toml</code>.</p>
+
+<h2 id="remaining-six-tests-220--226-on-elf">Remaining six tests (220 / 226 on ELF)</h2>
+
+<p>The six tests that do not compile on ELF are not gaps in the x64 backend. They test wasm or wasm to Mach-O behaviour and are omitted from the <code class="language-plaintext highlighter-rouge">elf</code> target (or skipped on macho for the same reason):</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">wasm_import_attr</code></strong>, <strong><code class="language-plaintext highlighter-rouge">wasm32_long_is_i32</code></strong> — WASI imports (<code class="language-plaintext highlighter-rouge">fd_write</code> from <code class="language-plaintext highlighter-rouge">wasi_snapshot_preview1</code>); run on wasm and the default macho (wasm) backend; skipped on native (<code class="language-plaintext highlighter-rouge">native_skip</code>) and direct macho-llvm (<code class="language-plaintext highlighter-rouge">macho_llvm_skip</code>).</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">builtin_wasm_memory</code></strong> — <code class="language-plaintext highlighter-rouge">__builtin_wasm_memory_size</code> / <code class="language-plaintext highlighter-rouge">memory.grow</code>; wasm-only (<code class="language-plaintext highlighter-rouge">native_skip</code>).</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">static_func_collision</code></strong> — multi-TU wasm link (<code class="language-plaintext highlighter-rouge">link_separately</code>); wasm-only.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">libc_qsort</code></strong> — needs host <code class="language-plaintext highlighter-rouge">qsort</code> so skipped on wasm and macho too (<code class="language-plaintext highlighter-rouge">wasm_skip</code>); not in corec-stdlib on ELF.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">define_malloc_free</code></strong> — redefines <code class="language-plaintext highlighter-rouge">malloc</code>/<code class="language-plaintext highlighter-rouge">free</code> in the test itself; skipped in the unity runner (<code class="language-plaintext highlighter-rouge">single_tu_skip</code>; also <code class="language-plaintext highlighter-rouge">wasm_skip</code> on macho/wasm).</li>
+</ul>
+
+<p>Together with these commits, we support <strong>220 passing tests out of 226</strong> in the tinyc test runner for the ELF backend.</p>
+
+<h2 id="next-steps">Next Steps:</h2>
+
+<ul>
+  <li>Start working on the benchmarking speed of execution of the mlir backend, by comparing the performance of tinyc compiler with the new backend with Clang.</li>
+  <li>Implement the optimizations like elimination of string comparisions, malloc etc for improving the speed of execution of the mlir backend.</li>
+  <li>Once these steps are completed, I shall be working on the integration of the new mlir backend with the lfortran compiler.</li>
+</ul>
+
+<h2 id="acknowledgments">Acknowledgments</h2>
+
+<p>A huge thanks to my mentors, <a href="https://github.com/certik">Ondřej Čertík</a>, <a href="https://github.com/Pranavchiku">Pranav Goswami</a>, <a href="https://github.com/HarshitaKalani">Harshita Kalani</a> &amp; other contributors for helping me to work on this project.</p>
+
+  </div>
+</article>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script src="/assets/js/mermaid-init.js"></script>
+
+
+      </main>
+    </div>
+  </body>
+</html>
